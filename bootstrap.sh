@@ -54,10 +54,46 @@ if have rtk; then
   fi
 fi
 
+# ---------- Layer 5: session/docs structure (do this first!) ----------
+log "Layer 5: session & docs structure (nadimtuhin/claude-token-optimizer)"
+if have npx; then
+  npx -y claude-token-optimizer --version >/dev/null 2>&1 || echo "NOTE: Install claude-token-optimizer in each repo with: npx claude-token-optimizer init"
+else
+  echo "SKIP Layer 5: npx not found (install Node.js)"
+fi
+
+# ---------- Layer 3: retrieval ----------
+log "Layer 3: graph retrieval (code-review-graph + graphify)"
+pip3 install --upgrade code-review-graph
+code-review-graph install || echo "WARN: code-review-graph auto-config failed; run 'code-review-graph install' manually"
+
+pip3 install --upgrade graphify
+graphify install || echo "WARN: graphify install failed; re-run 'graphify install' manually"
+
+# ---------- Layer 4: output style ----------
+log "Layer 4: output style ($STYLE)"
+case "$STYLE" in
+  caveman)
+    if have claude; then
+      claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman
+    else
+      echo "WARN: claude CLI not found; caveman plugin cannot be installed"
+    fi ;;
+  ponytail)
+    echo "Ponytail installs via Claude Code plugin marketplace — see:"
+    echo "  https://github.com/DietrichGebert/ponytail (INSTALL section)"
+    echo "Requires node on the non-interactive shell PATH for its lifecycle hooks." ;;
+  none)
+    echo "No style plugin installed. Pick ONE later (caveman | ponytail |"
+    echo "drona23/claude-token-efficient | alexgreensh/token-optimizer)." ;;
+  *) echo "unknown style: $STYLE" ;;
+esac
+
 # ---------- Layer 2: MCP caching/nav ----------
 log "Layer 2: MCP server ($MCP)"
 if [[ "$MCP" == "token-savior" ]]; then
-  pip3 install --upgrade "token-savior-recall[mcp]"
+  pip3 install --upgrade "git+https://github.com/Mibayy/token-savior.git#egg=token-savior-recall[mcp]" || \
+    echo "NOTE: token-savior not yet on PyPI. Install from GitHub or use --mcp ooples instead"
   if have claude; then
     claude mcp add --transport stdio --scope user token-savior -- \
       python3 -m token_savior_recall 2>/dev/null \
@@ -73,31 +109,7 @@ else
   echo "SKIP Layer 2 (unknown --mcp value: $MCP)"
 fi
 
-# ---------- Layer 3: retrieval ----------
-log "Layer 3: graph retrieval (code-review-graph + graphify)"
-pip3 install --upgrade code-review-graph
-code-review-graph install || echo "WARN: code-review-graph auto-config failed; run 'code-review-graph install' manually"
-
-pip3 install --upgrade graphifyy
-graphify install || echo "WARN: graphify install failed; re-run 'graphify install' manually"
-
-# ---------- Layer 4: output style ----------
-log "Layer 4: output style ($STYLE)"
-case "$STYLE" in
-  caveman)
-    have claude && claude plugin marketplace add JuliusBrussee/caveman \
-      && claude plugin install caveman@caveman ;;
-  ponytail)
-    echo "Ponytail installs via Claude Code plugin marketplace — see:"
-    echo "  https://github.com/DietrichGebert/ponytail (INSTALL section)"
-    echo "Requires node on the non-interactive shell PATH for its lifecycle hooks." ;;
-  none)
-    echo "No style plugin installed. Pick ONE later (caveman | ponytail |"
-    echo "drona23/claude-token-efficient | alexgreensh/token-optimizer)." ;;
-  *) echo "unknown style: $STYLE" ;;
-esac
-
-# ---------- Layer 5 + per-repo setup ----------
+# ---------- Per-repo setup (L5 + L3) ----------
 if [[ -n "$REPO" ]]; then
   log "Per-repo setup: $REPO"
   cd "$REPO"
