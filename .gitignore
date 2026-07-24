@@ -1,0 +1,5 @@
+# per-repo graph caches rebuild locally — never commit
+graphify-out/
+.code-review-graph/
+*.sqlite
+benchmarks/*.local.md
